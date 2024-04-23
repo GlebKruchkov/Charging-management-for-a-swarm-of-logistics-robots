@@ -99,6 +99,7 @@ class Robot(typing.Generic[CellT]):
         self.first_charge = True
         self.charge_vec = []
         self.charge_vec_first = []
+        self.time_vec = []
         self.is_going_to_charger_ = False
         self.robot_is_standing_ = robot_is_standing
         self.changing_threshold_ = True
@@ -109,6 +110,9 @@ class Robot(typing.Generic[CellT]):
         self._charging_threshold = charging_threshold
         self._charger_id = charger_id
         self._if_set_id = True
+        self._is_charging = False
+        self._last_charge = 100000
+        self._part = 0
 
         self._id = Robot._last_robot_id
         Robot._last_robot_id += 1
@@ -159,8 +163,9 @@ class Robot(typing.Generic[CellT]):
 
     def _move(self) -> typing.Generator[simpy.Event, bool, None]:
         self.charge_vec_first.append(f"move {self._current_charge}\n")
-        #print("SUKAAA")
-        self.charge_vec.append(self.get_curr_charge() / 100000)
+        for i in range(self._type.time_to_move):
+            self.charge_vec.append(self.get_curr_charge() / 100000)
+            self.time_vec.append(self._model.now)
         next_position = self._position.get_next_on(self._direction)
         request = self._model.map[next_position].reserve()
         yield request
@@ -175,9 +180,14 @@ class Robot(typing.Generic[CellT]):
         self._cell_request = request
 
     def _put(self):
+        if not self.robot_is_standing_:
+            self._current_charge -= self.type.charge_to_stop
+            self.robot_is_standing_ = True
         self._max_idle = max(self._max_idle, self._cur_idle)
         self.charge_vec_first.append(f"put {self._current_charge}\n")
-        self.charge_vec.append(self.get_curr_charge() / 100000)
+        for i in range(self._type.time_to_put):
+            self.charge_vec.append(self.get_curr_charge() / 100000)
+            self.time_vec.append(self._model.now)
         if self._mail is None:
             raise RobotWithoutMailException(self)
         if self._model.map[self.position].output_id != self._mail.destination:
@@ -188,9 +198,14 @@ class Robot(typing.Generic[CellT]):
         self._mail = None
 
     def _take(self) -> typing.Generator[simpy.Event, Mail, None]:
+        if not self.robot_is_standing_:
+            self._current_charge -= self.type.charge_to_stop
+            self.robot_is_standing_ = True
         self._cur_idle = 0
         self.charge_vec_first.append(f"take {self._current_charge}\n")
-        self.charge_vec.append(self.get_curr_charge() / 100000)
+        for i in range(self._type.time_to_take):
+            self.charge_vec.append(self.get_curr_charge() / 100000)
+            self.time_vec.append(self._model.now)
         if self._mail is not None:
             raise RobotWithMailException(self)
         logging.info(f"{self} is waiting for mail.")
@@ -207,29 +222,40 @@ class Robot(typing.Generic[CellT]):
         yield self._model.timeout(0)
 
     def _charge(self):
+        if not self.robot_is_standing_:
+            self._current_charge -= self.type.charge_to_stop
+            self.robot_is_standing_ = True
         self.charge_vec_first.append(f"charge {self._current_charge}\n")
-        #print(1)
         part = (self.get_bat_capacity - self.get_curr_charge()) / self.get_bat_capacity
         temp = self.get_curr_charge()
         adder = (self.get_bat_capacity - temp) / (self.type.time_to_charge * part)
         while temp < self.get_bat_capacity:
             self.charge_vec.append(temp / 100000)
+            self.time_vec.append(self._model.now)
             temp += adder
         self.charge_vec.append(temp / 100000)
+        self.time_vec.append(self._model.now)
+        if self._last_charge > self.changing_threshold_:
+            self._part = (self._battery_capacity - self._current_charge) / (self.type.time_to_charge - 1)
+            self._is_charging = True
+            self._last_charge = self.get_curr_charge()
+        #self._model.robots_on_charge += 1
         yield self._model.timeout(self.type.time_to_charge)
+        #self._model.robots_on_charge -= 1
         self.set_curr_charge()
+        self._is_charging = False
         if self.first_charge:
             self.first_charge = False
-            self._charging_threshold = 5850
-        if not self.robot_is_standing_:
-            self._current_charge -= self.type.charge_to_stop
-            self.robot_is_standing_ = True
+            self._charging_threshold = 8000
         # self._model.map.get_free_chargers[self.charger_id] = True
         # self._charger_id = -1
 
     def _turn(self, new_direction: Direction):
         self.charge_vec_first.append(f"turn {self._current_charge}\n")
-        self.charge_vec.append(self.get_curr_charge() / 100000)
+        for i in range(Direction.turn_count(self._direction, new_direction) \
+                       * self._type.time_to_turn):
+            self.charge_vec.append(self.get_curr_charge() / 100000)
+            self.time_vec.append(self._model.now)
         logging.info(f"{self} is turning to {new_direction}.")
         yield self._model.timeout(Direction.turn_count(self._direction, new_direction) \
                                   * self._type.time_to_turn)
@@ -271,6 +297,15 @@ class Robot(typing.Generic[CellT]):
 
     def get_threshold(self):
         return self._charging_threshold
+
+    def get_is_on_charge(self):
+        return self._is_charging
+
+    def get_last_charge(self):
+        return self._last_charge
+
+    def set_last_charge(self):
+        self._last_charge += self._part
 
     def get_change_threshold(self):
         return self.changing_threshold_

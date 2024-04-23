@@ -94,9 +94,6 @@ class PathBrain(Brain[Map[Cell], Robot[Cell]]):
 
     @typing.override
     def get_next_action(self, robot: Robot[Cell]) -> Robot.Action:
-        #robot.charge_vec_first.append(robot.get_curr_charge())
-        if robot.get_curr_charge() < 0:
-            print(robot.get_curr_charge())
         if self._generate_to_charger[robot] and not robot.is_going_to_charger_:
             self._generate_to_charger[robot] = False
             robot.is_going_to_charger_ = True
@@ -126,35 +123,22 @@ class PathBrain(Brain[Map[Cell], Robot[Cell]]):
         if (robot.is_going_to_charger_ and robot.mail is None
                 and robot.position == self._model.map.chargers[self._charger_destinations[robot]]
                 and new_state.start - self._model.now >= self.robot_type.time_to_charge):
-            # if robot.id == 0:
-            # print(robot.id, "is charging")
             robot.is_going_to_charger_ = False
             self._generate_to_input[robot] = True
             self._current[robot].remove()
             self._current[robot] = self._robots_reserves[robot].popleft()
-            # if robot.id == 0:
-            #     print(robot.counter_of_mails)
             return Robot.Action.charge
-            # self._current[robot].remove()
-            # self._current[robot] = self._robots_reserves[robot].popleft()
 
         if (robot.mail is not None
                 and robot.position == self._model.map.outputs[robot.mail.destination]
                 and new_state.start - self._model.now >= self.robot_type.time_to_put
                 and not robot.is_going_to_charger_):
-            # print(robot.mail.destination)
-            # if robot.get_curr_charge() < robot.get_threshold() and not robot.is_going_to_charger_:
-            #     self._generate_to_charger[robot] = True
-            #     self._generate_to_output[robot] = False
-            #     self._generate_to_input[robot] = False
-            # else:
             if robot.get_curr_charge() < robot.get_threshold():
                 self._generate_to_charger[robot] = True
             else:
                 self._generate_to_input[robot] = True
             self._count += 1
             robot.counter_of_mails += 1
-            # print(self._count)
             self._current[robot].remove()
             self._current[robot] = self._robots_reserves[robot].popleft()
             return Robot.Action.put
@@ -181,8 +165,6 @@ class PathBrain(Brain[Map[Cell], Robot[Cell]]):
                 self._generate_output_path(robot)
             new_state = self._robots_paths[robot][0]
         if new_state.start != self._model.now:
-            # if robot.is_going_to_charger_:
-            #     print("waiting")
             self._model.process(self._abort(new_state.start - self._model.now, robot))
             return Robot.Action.idle
         self._robots_paths[robot].popleft()

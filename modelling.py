@@ -25,6 +25,7 @@ class Model(simpy.Environment, typing.Generic[MapT, BrainT, RobotT]):
     map: MapT
     brain: BrainT
     robots: list[RobotT]
+    robots_on_charge = 0
 
     def __init__(self):
         self._now: int
