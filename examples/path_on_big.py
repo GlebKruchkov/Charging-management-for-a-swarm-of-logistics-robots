@@ -12,10 +12,10 @@ model = Model[Map[Cell], PathBrain, Robot[Cell]]()
 
 mail_factory = RandomAlwaysReadyMail(model, range(1, 10))
 map_ = import_map(model, import_json(
-    "/Users/glebkruckov/Robots/Charging-management-in-a-robotic-warehouse/data/map1-simple.json"), mail_factory)[0]
+    "data/map1-simple.json"), mail_factory)[0]
 model.set_map(map_)
 
-robot_type = RobotType(2, 2, 2, 2, 800, 10, 10, 50, 50, 200, 200)
+robot_type = RobotType(2, 2, 2, 2, 800, 0, 0, 0, 0, 0, 0)
 
 model.set_brain(PathBrain(model, robot_type))
 starts = [
@@ -38,6 +38,7 @@ for i, robot in enumerate(robots):
 robo9 = Robot(model, robot_type, Position(8, 3), Direction.up, 100000, 100000, 8000 + 5000 * 8, True)
 model.brain.robots_rests[robo9] = Position(8, 3)
 model.add_robot(robo9)
+
 robo10 = Robot(model, robot_type, Position(8, 1), Direction.up, 100000, 100000, 8000 + 5000 * 9, True)
 model.brain.robots_rests[robo10] = Position(8, 1)
 model.add_robot(robo10)
@@ -61,14 +62,14 @@ model.add_robot(robo14)
 robo15 = Robot(model, robot_type, Position(6, 7), Direction.up, 100000, 100000, 8000 + 5000 * 14, True)
 model.brain.robots_rests[robo15] = Position(6, 7)
 model.add_robot(robo15)
-
-robo16 = Robot(model, robot_type, Position(7, 5), Direction.up, 100000, 100000, 8000 + 5000 * 15, True)
-model.brain.robots_rests[robo16] = Position(7, 5)
-model.add_robot(robo16)
-
-robo17 = Robot(model, robot_type, Position(7, 4), Direction.up, 100000, 100000, 8000 + 5000 * 16, True)
-model.brain.robots_rests[robo17] = Position(7, 4)
-model.add_robot(robo17)
+#
+# robo16 = Robot(model, robot_type, Position(7, 5), Direction.up, 100000, 100000, 8000 + 5000 * 15, True)
+# model.brain.robots_rests[robo16] = Position(7, 5)
+# model.add_robot(robo16)
+#
+# robo17 = Robot(model, robot_type, Position(7, 4), Direction.up, 100000, 100000, 8000 + 5000 * 16, True)
+# model.brain.robots_rests[robo17] = Position(7, 4)
+# model.add_robot(robo17)
 
 last_cnt = 0
 
@@ -79,30 +80,30 @@ charge = [[]]
 for i in range(14):
     charge.append([])
 
-with open("/Users/glebkruckov/Robots/Charging-management-in-a-robotic-warehouse/results/temp.txt", "w") as file:
-    for i in range(1, 4 * 2000):
-        for j in range(15):
-            if model.robots[j].get_is_on_charge():
-                charge[j].append(model.robots[j].get_last_charge() / 1000)
-                model.robots[j].set_last_charge()
-            else:
-                charge[j].append(model.robots[j].get_curr_charge() / 1000)
+with open("results/15robots.txt",
+          "w") as file:
+    for i in range(1, 31):
+        if i == 1:
+            file.write(str(0))
+            file.write(" ")
+        # for j in range(15):
+        #     if model.robots[j].get_is_on_charge():
+        #         charge[j].append(model.robots[j].get_last_charge() / 1000)
+        #         model.robots[j].set_last_charge()
+        #     else:
+        #         charge[j].append(model.robots[j].get_curr_charge() / 1000)
 
-        time.append(model.now)
-        model.run(model.now + 1)
+        # time.append(model.now)
+        model.run(model.now + 2000)
         if i % 1 == 0:
+            print(f"время: {model.now}; количество развезенных писем: {str(model.brain.count)}")
             file.write(str(model.brain.count))
             file.write(" ")
 
-for i in range(15):
-    plt.plot(time, charge[i])
-plt.grid(True, linewidth=0.5)
-plt.xlim(0, max(time))
-plt.xticks(fontsize=15, fontstyle='normal')
-plt.yticks(fontsize=15, fontstyle='normal')
-plt.ylim(0, 100)
-plt.show()
-
-with open("/Users/glebkruckov/Robots/Charging-management-in-a-robotic-warehouse/results/action_log.txt", "w") as f:
-    for elem in model.robots[0].charge_vec_first:
-        f.write(str(elem))
+# plt.plot(time, charge[6])
+# plt.grid(True, linewidth=0.5)
+# plt.xlim(0, max(time))
+# plt.xticks(fontsize=15, fontstyle='normal')
+# plt.yticks(fontsize=15, fontstyle='normal')
+# plt.ylim(0, 100)
+# plt.show()
