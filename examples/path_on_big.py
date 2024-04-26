@@ -62,14 +62,6 @@ model.add_robot(robo14)
 robo15 = Robot(model, robot_type, Position(6, 7), Direction.up, 100000, 100000, 8000 + 5000 * 14, True)
 model.brain.robots_rests[robo15] = Position(6, 7)
 model.add_robot(robo15)
-#
-# robo16 = Robot(model, robot_type, Position(7, 5), Direction.up, 100000, 100000, 8000 + 5000 * 15, True)
-# model.brain.robots_rests[robo16] = Position(7, 5)
-# model.add_robot(robo16)
-#
-# robo17 = Robot(model, robot_type, Position(7, 4), Direction.up, 100000, 100000, 8000 + 5000 * 16, True)
-# model.brain.robots_rests[robo17] = Position(7, 4)
-# model.add_robot(robo17)
 
 last_cnt = 0
 
