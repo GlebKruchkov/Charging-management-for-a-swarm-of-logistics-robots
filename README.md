@@ -1,158 +1,160 @@
-# Управление зарядками для роя логистических роботов. Моделирование роботизированного сортировочного центра.
+# Management of Charging Stations for a Fleet of Logistics Robots. Simulation of a Robotic Sorting Center.
 
-## Основные предположения
+## Main Assumptions
 
-В пункты получения сортировочного логистического центра непрерывно поступают посылки, которые роботы должны сортировать - развести в соответствующие пункты назначения центра.
+Packages continuously arrive at the receiving points of the sorting logistics center, which robots must sort and deliver to the corresponding destination points within the center.
 
-Сортировочный центр - прямоугольная площадка, разделённая на клетки, некоторые из которых помечены, как пункты получения и назначения для посылок, пункты зарядных устройств для роботов.
+The sorting center is a rectangular area divided into cells, some of which are marked as:
+- Receiving points for packages,
+- Destination points for packages,
+- Charging stations for robots.
 
-Роботы могут двигаться вперед и поворачиваться в одном из 4 направлений. Роботы выполняют действия по командам системы управления за различные, заданные моделью, дискретные времена:
-- бездействие (время задается системой управления)
-- движение на одну клетку вперед
-- поворот на 90 градусов
-- взятие посылки (в пункте получения)
-- сдача посылки (в пункте назначения)
-- зарядка (в пункте с зарядным устройством)
+Robots can move forward and turn in one of four directions. Robots perform actions based on commands from the control system, with each action taking a discrete amount of time specified by the model:
+- **Idle** (time determined by the control system),
+- **Move forward** one cell,
+- **Turn 90 degrees**,
+- **Pick up a package** (at a receiving point),
+- **Deliver a package** (at a destination point),
+- **Charge** (at a charging station).
 
-В момент получения посылки роботом, случайным образом выбирается её пункт назначения - куда нужно отвести.
+When a robot picks up a package, its destination is randomly selected.
 
-У всех роботов на складе установлен минимальный порог заряда. Если робот без письма и уровень его заряда меньше либо равен пороговому, то робот едет заряжаться в пункт, который потенциально должны были освободить первым.
+All robots in the warehouse have a minimum charge threshold. If a robot is without a package and its charge level is less than or equal to the threshold, it goes to the charging station that is expected to be available first.
 
-Столкновением роботов считается одновременное использование одной клетки двумя роботами:
-- находятся в одной клетке
-- движутся в одну клетку
-- один движется в клетку, в которой находится другой
-- один движется в клетку, откуда движется другой
+A collision between robots is defined as the simultaneous use of the same cell by two robots:
+- Both are in the same cell,
+- Both are moving into the same cell,
+- One is moving into a cell occupied by the other,
+- One is moving into a cell from which the other is moving.
 
-## Установка
-1. предполагается, что уже установлены:
-    - python 3.12
-    - [simpy](https://github.com/esemble/simpy) (библиотека python)
+## Installation
+1. It is assumed that the following are already installed:
+    - Python 3.12,
+    - [SimPy](https://github.com/esemble/simpy) (a Python library).
 
-## Конфигурация модели
+## Model Configuration
 
-Конфигурация задается несколькими `.json` файлами и выбранным алгоритмом. Запуск производится из консоли.
+The configuration is defined by several `.json` files and a selected algorithm. The simulation is launched from the command line.
 
-### Карта склада
-Конфигурация склада задается файлом `.json`, который содержит:
-- `span` - расстояние между клетками
-- `cells` - прямоугольный двумерный массив клеток (1 координата - строка сверху вниз, 2 координата - столбец слева направо), каждая из которых содержит необязательные:
-    - `free` - может ли робот находиться, по умолчанию может: `true`
-    - `inputId` - уникальный номер пункта получения, по умолчанию его нет
-    - `outputId` - уникальный номер пункта назначения, по умолчанию его нет
-    - `chargeId` - уникальный номер пункта c зарядным устройством, по умолчанию его нет
+### Warehouse Map
+The warehouse configuration is specified in a `.json` file containing:
+- `span` - the distance between cells,
+- `cells` - a rectangular 2D array of cells (1st coordinate - row from top to bottom, 2nd coordinate - column from left to right), each of which may contain the following optional fields:
+    - `free` - whether a robot can be in the cell (default: `true`),
+    - `inputId` - unique ID of the receiving point (default: none),
+    - `outputId` - unique ID of the destination point (default: none),
+    - `chargeId` - unique ID of the charging station (default: none).
 
+### Robot Properties
+A robot is created with the following parameters:
+- `timeToMove` - time to move forward one cell,
+- `timeToTurn` - time to turn 90 degrees,
+- `timeToTake` - time to pick up a package,
+- `timeToPut` - time to deliver a package,
+- `timeToCharge` - time to charge to 100%,
+- `charge_to_turn` - charge consumed to turn,
+- `charge_to_go` - charge consumed to move forward one cell,
+- `charge_to_take` - charge consumed to pick up a package,
+- `charge_to_put` - charge consumed to deliver a package,
+- `charge_to_stop` - charge consumed to stop,
+- `charge_to_start` - charge consumed to start moving.
 
-### Свойства роботов
-Робот создаётся со следующими параметрами:
-- `timeToMove` - время для движения вперед на 1 клетку
-- `timeToTurn`- время для поворота на 90 градусов
-- `timeToTake`  - время, чтобы взять посылку
-- `timeToPut` - время, чтобы положить посылку
-- `timeToCharge` - время, чтобы зарядиться на 100%
-- `charge_to_turn` - заряд, который робот тратит, чтобы повернуться
-- `charge_to_go` - заряд, который робот тратит, чтобы пройти одну клетку вперёд
-- `charge_to_take` - заряд, который робот тратит, чтобы взять посылку
-- `charge_to_put` - заряд, который робот тратит, чтобы положить посылку
-- `charge_to_stop` - заряд, который робот тратит, чтобы остановиться
-- `charge_to_start` - заряд, который робот тратит, чтобы начать движение
+### Robot Placement
+The model also specifies the initial placement of robots in the warehouse. The parameters include:
+- `robots` - a list where each element contains:
+    - `id` - optional ID,
+    - `x` - position along the 1st coordinate (starting from 0),
+    - `y` - position along the 2nd coordinate (starting from 0),
+    - `direction` - one of the following directions:
+        - `up` - upwards,
+        - `left` - to the left,
+        - `down` - downwards,
+        - `right` - to the right.
 
+## Simulation Architecture
 
-### Расположение роботов
-В модели также задаётся начальное расположение роботов на складе. Параметры, которые заданы:
-- `robots` - список, элементы которого содержат:
-    - `id` - необязательный id
-    - `x` - позиция по 1 координате, считая с 0
-    - `y` - позиция по 2 координате, считая с 0
-    - `direction` - направление одно из:
-        - `up` - вверх
-        - `left` - влево
-        - `down` - вниз
-        - `right` - вправо
+The model is divided into two parts: the control system and the (controlled) warehouse model.
 
-## Архитектура моделирования
+Before the simulation starts, the warehouse model:
+1. Reads the configuration files,
+2. Places the robots and notifies the control system about each one,
+3. Requests the first action for each robot from the control system.
 
-Модель разделена на 2 части: сменная система управления и модель (управляемого) склада.
+During execution, the model repeats the following steps:
+1. Checks if the robot's action can be executed.
+2. If possible, executes the robot's action.
+3. If the action cannot be executed, an error occurs or the control system is notified, depending on the type of error.
+4. Once the action is completed, requests the next action from the control system.
 
-До запуска, модель склада:
-1. считывает файлы конфигурации,
-2. расставляет роботов и уведомляет о каждом систему управления,
-3. запрашивает у системы управления первое действие для каждого робота,
+When the simulation ends (either after a specified time or after delivering a specified number of packages), the warehouse model outputs the required results.
 
-Во время исполнения, модель повторяет следующее:
-1. проверяет возможность выполнения полученного действия робота.
-2. если возможно, выполняет действие робота
-3. если действие не может быть выполнено, возникает ошибка или оповещается система управление в зависимости от вида ошибки,
-4. когда действие закончилось, запрашивает следующее действие у системы управления,
+### Controlled Warehouse Model
 
-Когда моделирование закончено, то есть прошло заданное время или доставлено заданное количество посылок, модель склада выводит требуемые результаты.
+#### Warehouse Model Structure
+- [/brains/](/brains/) - control algorithms,
+- [/mail_factories/](/mail_factories/) - package generators,
+- [/maps/](/maps/) - maps, including the main map and additional ones storing extra information,
+- [/structures.py](/structures.py) - immutable data structures,
+- [/modelling.py](/modelling.py) - the main `Model` class, which ties together the other classes and takes control after receiving the simulation command,
+- [/brains/brain.py](/brains/brain.py) - the abstract `Brain` class, defining the control system interface,
+- [/cell.py](/cell.py) - the `Cell` class, implementing a map cell,
+- [/robot.py](/robot.py) - the `Robot` class, performing actions.
 
-### Модель управляемого склада
+#### Before Execution
+1. For each robot, the model reserves the cell corresponding to its initial position.
+2. For each robot, the model calls `Brain.add_robot`.
+3. For each robot, the model requests the first action by calling `Brain.get_next_action`.
 
-#### Конструкция модели склада
-- [/brains/](/brains/) - алгоритмы управления
-- [/mail_factories/](/mail_factories/) - генераторы посылок
-- [/maps/](/mail_factories/) - карты, основная и дополнительные которые хранят дополнительную информацию
-- [/mail_factories/](/mail_factories/) - генераторы посылок  для пунктов получения.
-- [/structures.py](/structures.py) - неизменяемые структуры данных
-- [/modelling.py](/modelling.py) - основной класс `Model`, связывающий остальные классы и получающий управление после получения команды моделирования.
-- [/brains/brain.py](/brains/brain.py) - абстрактный класс `Brain`, описывающий интерфейс системы управления.
-- [/cell.py](/cell.py) - класс `Cell`, реализующий клетку карты
-- [/robot.py](/robot.py) - робот `Robot`, выполняющий действия.
+#### During Execution
+After receiving the next action for a robot, the model executes it as follows:
+- **Idle**: The model adds an event indicating that the robot will finish the action after the specified time.
+- **Move**: The model reserves the next cell, adds an event for the movement time, and cancels the reservation of the previous cell.
+- **Charge**: The robot charges.
+- **Pick up**: The robot picks up a package.
+- **Deliver**: The robot delivers a package.
 
-#### До запуска
-1. Для каждого робота модель резервирует клетку, соответствующую начальному положению.
-2. Для каждого робота модель вызывает `Brain.add_robot`.
-3. Для каждого робота модель узнает первое действие: вызывает `Brain.get_next_action`.
+After processing the action, the model requests the next action for the robot by calling `Brain.get_next_action`.
 
-#### Во время исполнения
-После того, как модель получило очередное действие очередного робота, она выполняет это действие следующим образом:
-- **бездействовать**: модель добавляет событие, что робот закончит действие через заданное время
-- **двигаться**: модель резервирует следующую клетку, добавляет событие через нужное для перемещения время, отменяет резервирование предыдущей клетки.
-- **заряжаться**: робот заряжается
-- **взять**: робот забирает посылку
-- **положить**: робот кладёт посылку
+### Control System Model
 
-После обработки очередного действия очередного робота, модель узнает для этого робота новое действие, вызывая `Brain.get_next_action`.
+#### Interface
+The control system model must be implemented in Python as a class inheriting from the `Brain` class, with the following methods:
+- `add_robot(Robot)`, called by the warehouse model for each added robot before the simulation starts.
+- `get_next_action(Robot) -> Robot.Action`, called by the warehouse model for each robot, returning the next action for the robot.
 
-### Модель системы управления
+#### Information About Warehouse State
+The control system can access all information about the current state of the warehouse model through the `_model` field (an instance of the `Model` class) contained in the `Brain` class.
 
-#### Интерфейс
-Модель системы управления необходимо реализовать на python специальным классом, который наследуется от класса `Brain` и состоит из методов:
-- `add_robot(Robot)`, вызывается моделью склада для каждого добавленного робота до запуска модели.
-- `get_next_action(Robot) -> Robot.Action`, вызывается моделью склада для каждого робота, метод возвращает предстоящее действие для данного робота.
+The `Model` class contains:
+- The immutable part - the warehouse map (`map` field),
+- The mutable part - the state of the robots (`robots` field).
 
-#### Информация о состоянии модели склада
-Модель система управления может получить всю информацию о текущем состоянии модели склада из поля `_model` (экземпляр класса `Model`), которое содержится в классе `Brain`.
+The warehouse map can be accessed through the `Map` fields:
+- `inputs` - list of receiving point coordinates,
+- `outputs` - list of destination point coordinates,
+- `chargers` - list of charging station coordinates,
+- `inputs_ids` - list of receiving point IDs,
+- `outputs_ids` - list of destination point IDs,
+- `charge_ids` - list of charging station IDs.
 
-Класс `Model`содержит неизменяемую часть - карта склада - поле `map` и переменною - состояние роботов - поле `robots`.
+Each cell contains the following immutable fields:
+- `free` - whether a robot can be in the cell,
+- `input_id` - receiving point ID or `None` if absent,
+- `output_id` - destination point ID or `None` if absent,
+- `charge_id` - charging station ID or `None` if absent,
+- `reserved` - whether the cell is reserved by a robot (other robots cannot move into it).
 
-Карта склада может быть получена из полей карты `Map`:
-- `inputs` - список координат пунктов получения
-- `outputs` - список координат пунктов назначение
-- `chargers` - список координат зарядных устройств
-- `inputs_ids` - список id пунктов получение
-- `outputs_ids` - список id пунктов назначения
-- `charge_ids` - список id зарядных устройств
+Each robot contains the following immutable fields, corresponding to the configuration:
+- `id` - robot ID (if specified in the configuration, otherwise `None`),
+- `type` - robot type, containing information about the robot's properties.
 
-Каждая клетка содержит неизменяемые поля:
-- `free` - может ли робот находиться на ней
-- `input_id` - id пункта получения или `None`, если нет
-- `output_id` - id пункта назначения или `None`, если нет
-- `charge_id` - id зарядного устройства или `None`, если нет
-- `reserved` - какой-то робот зарезервировал клетку - использует, другие не могут в нее перемещаться.
-
-Каждый робот, содержит неизменяемые поля, соответствующие конфигурации:
-- `id` - id робота, заданный конфигурацией. Если не задан, то будет `None`
-- `type` - тип робота, информация о свойствах робота.
-
-Поскольку переменная часть модели состоит только из состояния роботов, то о текущем состоянии модели склада можно узнать из полей класса `Robot`:
-- `position.x`, `position.y` - целые координаты клетки, на которой находится робот (начиная с 0)
-- `direction` одно из 4 направлений 
-- `battery_capacity` - максимальный объём батареи
-- `current_charge` - текущий заряд робота
-- `robot_is_standing_` (`bool`) - параметр, который показывает стоит робот или же находится в движении.
-- `is_going_to_charger_` (`bool`) - параметр, который показывает едет ли робот на зарядное устройство
-- `mail` - посылка, которую везет робот или `None`, если нет посылки:
-    - `mail.id`(`int`) - уникальный номер посылки
-    - `mail.destination`(`int`) - направление, в которое нужно доставить
+Since the mutable part of the model consists only of the robots' state, the current state of the warehouse model can be determined from the `Robot` class fields:
+- `position.x`, `position.y` - integer coordinates of the cell where the robot is located (starting from 0),
+- `direction` - one of four directions,
+- `battery_capacity` - maximum battery capacity,
+- `current_charge` - current charge level,
+- `robot_is_standing_` (`bool`) - indicates whether the robot is stationary or moving,
+- `is_going_to_charger_` (`bool`) - indicates whether the robot is heading to a charging station,
+- `mail` - the package the robot is carrying or `None` if no package is being carried:
+    - `mail.id` (`int`) - unique package ID,
+    - `mail.destination` (`int`) - destination point ID.
